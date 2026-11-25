@@ -64,7 +64,9 @@ class NextcloudService(private val client: io.ktor.client.HttpClient = HttpClien
             header(HttpHeaders.ContentType, "application/octet-stream")
             setBody(data)
             onUpload { bytesSentTotal, contentLength ->
-                if (contentLength > 0) progressHandler(minOf(bytesSentTotal.toDouble() / contentLength, 0.99))
+                if (contentLength != null && contentLength > 0 && bytesSentTotal != null) {
+                    progressHandler(minOf(bytesSentTotal.toDouble() / contentLength, 0.99))
+                }
             }
         }.execute()
         if (response.status != HttpStatusCode.OK && !(response.status.value in 200..299)) {

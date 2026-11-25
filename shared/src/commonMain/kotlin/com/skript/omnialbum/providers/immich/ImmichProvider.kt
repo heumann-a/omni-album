@@ -229,7 +229,9 @@ class ImmichProvider : ShareLinkProvider {
             header(HttpHeaders.ContentType, "multipart/form-data; boundary=$boundary")
             setBody(buildMultipartBody(boundary, fileData, task, mimeType))
             onUpload { bytesSentTotal, contentLength ->
-                if (contentLength > 0) progressHandler(minOf(bytesSentTotal.toDouble() / contentLength, 0.99))
+                if (contentLength != null && contentLength > 0 && bytesSentTotal != null) {
+                    progressHandler(minOf(bytesSentTotal.toDouble() / contentLength, 0.99))
+                }
             }
         }.execute()
         if (response.status.isSuccess()) {
