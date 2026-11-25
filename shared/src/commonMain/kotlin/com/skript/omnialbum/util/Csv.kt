@@ -109,7 +109,7 @@ object Csv {
 
     @OptIn(ExperimentalTime::class)
     fun exportFileName(): String {
-        val now = Clock.System.now().toLocalDateTime(kotlinx.datetime.TimeZone.UTC)
-        return "omnialbum-albums-${now.year}-${now.monthNumber.toString().padStart(2, '0')}-${now.dayOfMonth.toString().padStart(2, '0')}.csv"
+        val date = Clock.System.now().toString().substring(0, 10)
+        return "omnialbum-albums-$date.csv"
     }
 }

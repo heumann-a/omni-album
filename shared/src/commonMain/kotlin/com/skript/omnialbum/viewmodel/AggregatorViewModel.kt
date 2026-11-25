@@ -35,7 +35,7 @@ class AggregatorViewModel(
         _errorMessage.value = null
         _isLoading.value = true
         try {
-            val provider = ProviderRegistry.shared.provider(forType)
+            val provider = ProviderRegistry.shared.provider(providerType)
                 ?: throw IllegalStateException("Unsupported provider.")
             val parsed = provider.parseShareLink(shareLinkURL)
             val info = provider.fetchSharedLinkInfo(

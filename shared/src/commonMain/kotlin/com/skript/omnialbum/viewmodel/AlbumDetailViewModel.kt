@@ -115,23 +115,27 @@ class AlbumDetailViewModel(
     private fun computeDateRangeText(assets: List<Asset>): String? {
         if (assets.isEmpty()) return null
         val dates = assets.mapNotNull { a ->
-            a.createdAt?.takeIf { it.isNotEmpty() }?.let { runCatching { kotlin.time.Instant.parse(it) }.getOrNull() }
+            a.createdAt?.takeIf { it.length >= 7 }?.let { monthYearOf(it) }
         }
         if (dates.isEmpty()) return null
-        val min = dates.min()
-        val max = dates.max()
-        fun monthYear(i: kotlin.time.Instant): Pair<Int, Int> {
-            val dt = i.toLocalDateTime(kotlinx.datetime.TimeZone.UTC)
-            return dt.month.ordinal + 1 to dt.year
-        }
-        val (minMonth, minYear) = monthYear(min)
-        val (maxMonth, maxYear) = monthYear(max)
-        val minMonthName = kotlinx.datetime.Month.of(minMonth).name.lowercase().replaceFirstChar { it.uppercase() }.take(3)
-        val maxMonthName = kotlinx.datetime.Month.of(maxMonth).name.lowercase().replaceFirstChar { it.uppercase() }.take(3)
+        val (minMonth, minYear) = dates.minWith(compareBy({ it.second }, { it.first }))
+        val (maxMonth, maxYear) = dates.maxWith(compareBy({ it.second }, { it.first }))
+        val minMonthName = MONTH_NAMES[minMonth - 1]
+        val maxMonthName = MONTH_NAMES[maxMonth - 1]
         return when {
             minYear == maxYear && minMonth == maxMonth -> "$minMonthName $minYear"
             minYear == maxYear -> "$minMonthName - $maxMonthName $maxYear"
             else -> "$minMonthName $minYear - $maxMonthName $maxYear"
         }
+    }
+
+    private fun monthYearOf(iso: String): Pair<Int, Int>? {
+        val year = iso.take(4).toIntOrNull() ?: return null
+        val month = iso.substring(5, 7).toIntOrNull() ?: return null
+        return month to year
+    }
+
+    private companion object {
+        val MONTH_NAMES = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
     }
 }

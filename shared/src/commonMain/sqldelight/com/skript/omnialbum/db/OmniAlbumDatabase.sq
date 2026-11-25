@@ -6,9 +6,9 @@ CREATE TABLE albums (
     share_key TEXT NOT NULL,
     album_id TEXT NOT NULL,
     asset_count INTEGER,
-    allow_upload INTEGER AS Boolean NOT NULL DEFAULT 0,
-    allow_download INTEGER AS Boolean NOT NULL DEFAULT 1,
-    show_metadata INTEGER AS Boolean NOT NULL DEFAULT 1,
+    allow_upload INTEGER NOT NULL DEFAULT 0,
+    allow_download INTEGER NOT NULL DEFAULT 1,
+    show_metadata INTEGER NOT NULL DEFAULT 1,
     password TEXT,
     provider TEXT NOT NULL DEFAULT 'immich',
     created_at TEXT NOT NULL

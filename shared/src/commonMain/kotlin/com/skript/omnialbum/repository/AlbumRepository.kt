@@ -1,7 +1,9 @@
 package com.skript.omnialbum.repository
 
-import com.skript.omnialbum.db.DatabaseHolder
+import app.cash.sqldelight.coroutines.asFlow
+import app.cash.sqldelight.coroutines.executeAsList
 import com.skript.omnialbum.db.Albums
+import com.skript.omnialbum.db.DatabaseHolder
 import com.skript.omnialbum.model.DisplayAlbum
 import com.skript.omnialbum.model.PhotoProvider
 import kotlinx.coroutines.flow.Flow
@@ -26,9 +28,9 @@ class AlbumRepository private constructor() {
             share_key = album.shareKey,
             album_id = album.albumId,
             asset_count = album.assetCount?.toLong(),
-            allow_upload = album.allowUpload,
-            allow_download = album.allowDownload,
-            show_metadata = album.showMetadata,
+            allow_upload = if (album.allowUpload) 1L else 0L,
+            allow_download = if (album.allowDownload) 1L else 0L,
+            show_metadata = if (album.showMetadata) 1L else 0L,
             password = album.password,
             provider = album.provider.name.lowercase(),
             created_at = Clock.System.now().toString()
@@ -57,9 +59,9 @@ class AlbumRepository private constructor() {
         shareKey = row.share_key,
         albumId = row.album_id,
         assetCount = row.asset_count?.toInt(),
-        allowUpload = row.allow_upload,
-        allowDownload = row.allow_download,
-        showMetadata = row.show_metadata,
+        allowUpload = row.allow_upload == 1L,
+        allowDownload = row.allow_download == 1L,
+        showMetadata = row.show_metadata == 1L,
         password = row.password,
         provider = PhotoProvider.entries.firstOrNull { it.name.lowercase() == row.provider }
             ?: PhotoProvider.IMMICH
