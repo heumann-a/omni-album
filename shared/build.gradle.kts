@@ -23,7 +23,7 @@ kotlin {
             api(libs.kotlinx.serialization.json)
             api(libs.kotlinx.datetime)
             implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.contentNegotiation)
+            implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.ionspin.crypto.libsodium)
             implementation(libs.sqldelight.runtime)
