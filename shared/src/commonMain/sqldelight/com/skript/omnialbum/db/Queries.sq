@@ -1,0 +1,15 @@
+selectAllOrdered:
+SELECT * FROM albums ORDER BY created_at DESC;
+
+insertAlbum:
+INSERT OR REPLACE INTO albums (id, album_name, album_thumbnail_asset_id, base_url, share_key, album_id, asset_count, allow_upload, allow_download, show_metadata, password, provider, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateAlbumData:
+UPDATE albums SET asset_count = ?, album_thumbnail_asset_id = ? WHERE album_id = ?;
+
+deleteAlbum:
+DELETE FROM albums WHERE id = ?;
+
+existsById:
+SELECT EXISTS(SELECT 1 FROM albums WHERE id = ?) AS found;
