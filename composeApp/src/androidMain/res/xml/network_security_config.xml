@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mirrors NSAllowsArbitraryLoads=true in the iOS Info.plist: users connect to
+     self-hosted photo servers that may use plain HTTP on local networks. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

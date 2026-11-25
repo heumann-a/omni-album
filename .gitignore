@@ -1,0 +1,27 @@
+# Xcode
+.DS_Store
+*.xcodeproj/xcuserdata/
+xcuserdata/
+build/
+DerivedData/
+*.xcarchive
+.swiftpm/
+
+# Gradle / Kotlin Multiplatform
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Android
+*.apk
+*.ap_
+*.aab
+apk/
+
+# iOS KMP artifacts
+iosApp/iosApp.xcodeproj/xcuserdata/
