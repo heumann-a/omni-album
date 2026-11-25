@@ -85,7 +85,7 @@ fun CachedImage(
     if (model == null) {
         Box(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
             Icon(
-                imageVector = androidx.compose.material.icons.Icons.Default.Photo,
+                imageVector = androidx.compose.material.icons.Icons.Default.Image,
                 contentDescription = null,
                 modifier = Modifier
                     .align(Alignment.Center)
