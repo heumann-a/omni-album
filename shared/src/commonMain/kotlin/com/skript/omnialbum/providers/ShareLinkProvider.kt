@@ -72,6 +72,8 @@ interface ShareLinkProvider {
 
     suspend fun uploadAsset(
         task: UploadTask,
+        fileData: ByteArray,
+        mimeType: String,
         progressHandler: (Double) -> Unit
     ): String
 
