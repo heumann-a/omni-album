@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
+
 package com.skript.omnialbum.model
 
 import kotlinx.datetime.Instant

@@ -1,7 +1,7 @@
 package com.skript.omnialbum.net
 
 import io.ktor.client.HttpClient
-import io.ktor.client.plugins.HttpCookies
+import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json

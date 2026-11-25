@@ -34,8 +34,8 @@ object EnteCrypto {
         if (nonce.size != 24 || key.size != 32) return null
         return runCatching {
             SecretBox.openEasy(
-                authenticatedCipherText = ciphertext.toUByteArray(),
-                secretKey = key.toUByteArray(),
+                ciphertext = ciphertext.toUByteArray(),
+                key = key.toUByteArray(),
                 nonce = nonce.toUByteArray()
             )?.toByteArray()
         }.getOrNull()
@@ -44,8 +44,8 @@ object EnteCrypto {
     fun decryptStream(encryptedData: ByteArray, header: ByteArray, key: ByteArray): ByteArray? {
         if (header.size != 24 || key.size != 32) return null
         return runCatching {
-            val state = SecretStream.xChaCha20Poly1305InitPull(
-                secretKey = key.toUByteArray(),
+            val stateAndHeader = SecretStream.xChaCha20Poly1305InitPull(
+                key = key.toUByteArray(),
                 header = header.toUByteArray()
             )
             val decryptionChunkSize = 4 * 1024 * 1024 + 17
@@ -55,8 +55,8 @@ object EnteCrypto {
                 val end = minOf(offset + decryptionChunkSize, encryptedData.size)
                 val chunk = encryptedData.copyOfRange(offset, end)
                 val pulled = SecretStream.xChaCha20Poly1305Pull(
-                    state = state,
-                    cipherText = chunk.toUByteArray()
+                    state = stateAndHeader.state,
+                    ciphertext = chunk.toUByteArray()
                 )
                 out.write(pulled.message.toByteArray())
                 offset = end

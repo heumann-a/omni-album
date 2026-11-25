@@ -3,7 +3,7 @@ package com.skript.omnialbum.providers.ente
 import com.skript.omnialbum.net.HttpClientHolder
 import io.ktor.client.request.get
 import io.ktor.client.request.header
-import io.ktor.client.statement.body
+import io.ktor.client.call.body
 import io.ktor.client.statement.bodyAsBytes
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode

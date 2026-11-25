@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
+
 package com.skript.omnialbum.providers.photoprism
 
 import com.skript.omnialbum.model.AlbumDetail
@@ -109,7 +111,7 @@ class PhotoPrismProvider : ShareLinkProvider {
         val slug = pathComponents.getOrNull(sIndex + 2)
         val scheme = url.protocol.name
         var base = "$scheme://${url.host}"
-        val port = url.explicitPort
+        val port = url.explicitPortOrNull()
         if (port != null && !(scheme == "https" && port == 443) && !(scheme == "http" && port == 80)) {
             base += ":$port"
         }

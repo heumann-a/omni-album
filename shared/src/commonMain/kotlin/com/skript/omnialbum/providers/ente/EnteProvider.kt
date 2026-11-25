@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
+
 package com.skript.omnialbum.providers.ente
 
 import com.skript.omnialbum.model.AlbumDetail
@@ -8,18 +10,17 @@ import com.skript.omnialbum.model.PhotoProvider
 import com.skript.omnialbum.model.UploadTask
 import com.skript.omnialbum.net.ApiVersion
 import com.skript.omnialbum.net.ApiVersionCatalog
+import com.skript.omnialbum.platform.createParentDirectories
+import com.skript.omnialbum.platform.fileExists
 import com.skript.omnialbum.platform.platformCacheDir
+import com.skript.omnialbum.platform.readFileBytes
+import com.skript.omnialbum.platform.writeFileBytes
 import com.skript.omnialbum.providers.AssetVariant
 import com.skript.omnialbum.providers.ParsedShareLinkResult
 import com.skript.omnialbum.providers.ShareLinkProvider
 import com.skript.omnialbum.providers.SharedLinkInfo
 import io.ktor.http.Url
 import kotlin.io.encoding.Base64
-import kotlin.io.path.Path
-import kotlin.io.path.createDirectories
-import kotlin.io.path.exists
-import kotlin.io.path.readBytes
-import kotlin.io.path.writeBytes
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -193,7 +194,7 @@ class EnteProvider : ShareLinkProvider {
     override fun thumbnailURL(baseURL: String, assetId: String, shareKey: String): String? {
         val cacheDir = extractCacheDir(shareKey)
         val path = thumbnailCachePath(cacheDir, assetId)
-        return if (path.exists()) "file://$path" else null
+        return if (fileExists(path)) "file://$path" else null
     }
 
     override fun previewURL(baseURL: String, asset: Asset, shareKey: String): String? = null
@@ -235,8 +236,8 @@ class EnteProvider : ShareLinkProvider {
             AssetVariant.PREVIEW, AssetVariant.ORIGINAL -> {
                 val cacheDir = extractCacheDir(shareKey)
                 val cachePath = previewCachePath(cacheDir, fileIdStr)
-                if (cachePath.exists()) {
-                    return cachePath.readBytes()
+                if (fileExists(cachePath)) {
+                    return readFileBytes(cachePath)
                 }
                 val header = asset.providerData.getValue("fileDecryptionHeader").let {
                     runCatching { Base64.decode(it) }.getOrNull()
@@ -245,8 +246,8 @@ class EnteProvider : ShareLinkProvider {
                 val decrypted = EnteCrypto.decryptStream(encrypted, header, fileKey)
                     ?: throw EnteServiceError.decryptionFailed
                 runCatching {
-                    cachePath.parent.createDirectories()
-                    cachePath.writeBytes(decrypted)
+                    createParentDirectories(cachePath)
+                    writeFileBytes(cachePath, decrypted)
                 }
                 decrypted
             }
@@ -293,21 +294,21 @@ class EnteProvider : ShareLinkProvider {
         cacheDir: String
     ) {
         val cachePath = thumbnailCachePath(cacheDir, file.id.toString())
-        if (cachePath.exists()) return
+        if (fileExists(cachePath)) return
         val header = runCatching { Base64.decode(file.thumbnail.decryptionHeader) }.getOrNull() ?: return
         val encrypted = EnteService.downloadThumbnail(file.id, accessToken)
         val decrypted = EnteCrypto.decryptStream(encrypted, header, fileKey) ?: return
         runCatching {
-            cachePath.parent.createDirectories()
-            cachePath.writeBytes(decrypted)
+            createParentDirectories(cachePath)
+            writeFileBytes(cachePath, decrypted)
         }
     }
 
-    private fun previewCachePath(cacheDir: String, fileId: String): Path =
-        Path(platformCacheDir(), "ente-previews", cacheDir, fileId)
+    private fun previewCachePath(cacheDir: String, fileId: String): String =
+        "${platformCacheDir()}/ente-previews/$cacheDir/$fileId"
 
-    private fun thumbnailCachePath(cacheDir: String, fileId: String): Path =
-        Path(platformCacheDir(), "ente-thumbs", cacheDir, "$fileId.jpg")
+    private fun thumbnailCachePath(cacheDir: String, fileId: String): String =
+        "${platformCacheDir()}/ente-thumbs/$cacheDir/$fileId.jpg"
 
     private fun guessAssetType(fileName: String, fileType: Int?): AssetType {
         if (fileType != null) return if (fileType == 1) AssetType.VIDEO else AssetType.IMAGE

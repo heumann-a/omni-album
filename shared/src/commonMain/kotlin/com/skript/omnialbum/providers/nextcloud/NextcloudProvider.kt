@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
+
 package com.skript.omnialbum.providers.nextcloud
 
 import com.skript.omnialbum.model.AlbumDetail
@@ -10,6 +12,7 @@ import com.skript.omnialbum.net.ApiVersion
 import com.skript.omnialbum.net.ApiVersionCatalog
 import com.skript.omnialbum.net.UnsupportedApiVersionException
 import com.skript.omnialbum.net.buildUrl
+import com.skript.omnialbum.net.explicitPortOrNull
 import com.skript.omnialbum.net.encodePathSegment
 import com.skript.omnialbum.net.normalizeBaseURL
 import com.skript.omnialbum.net.percentDecode
@@ -86,7 +89,7 @@ class NextcloudProvider : ShareLinkProvider {
         }
         val scheme = url.protocol.name
         var base = "$scheme://${url.host}"
-        val port = url.explicitPort
+        val port = url.explicitPortOrNull()
         if (port != null && !(scheme == "https" && port == 443) && !(scheme == "http" && port == 80)) {
             base += ":$port"
         }

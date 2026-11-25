@@ -3,6 +3,11 @@ package com.skript.omnialbum.net
 import io.ktor.http.Url
 import io.ktor.http.encodeURLParameter
 
+private val explicitPortRegex = Regex("^https?://[^/:?#]+:(\\d+)")
+
+fun Url.explicitPortOrNull(): Int? =
+    explicitPortRegex.find(toString())?.groupValues?.get(1)?.toIntOrNull()
+
 fun normalizeBaseURL(raw: String): String? {
     var s = raw.trim()
     if (!s.contains("://")) s = "https://$s"
@@ -11,7 +16,7 @@ fun normalizeBaseURL(raw: String): String? {
     if (host.isEmpty()) return null
     val scheme = url.protocol.name
     var base = "$scheme://$host"
-    val port = url.explicitPort
+    val port = url.explicitPortOrNull()
     if (port != null && !(scheme == "https" && port == 443) && !(scheme == "http" && port == 80)) {
         base += ":$port"
     }

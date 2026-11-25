@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
+
 package com.skript.omnialbum.providers.lychee
 
 import com.skript.omnialbum.model.AlbumDetail
@@ -82,7 +84,7 @@ class LycheeProvider : ShareLinkProvider {
         if (albumId.isEmpty()) throw LycheeServiceError.albumNotFound
         val scheme = url.protocol.name
         var base = "$scheme://${url.host}"
-        val port = url.explicitPort
+        val port = url.explicitPortOrNull()
         if (port != null && !(scheme == "https" && port == 443) && !(scheme == "http" && port == 80)) {
             base += ":$port"
         }

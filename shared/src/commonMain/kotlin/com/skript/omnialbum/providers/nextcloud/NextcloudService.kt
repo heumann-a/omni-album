@@ -4,6 +4,7 @@ import com.skript.omnialbum.net.HttpClientHolder
 import com.skript.omnialbum.net.buildUrl
 import com.skript.omnialbum.net.normalizeBaseURL
 import io.ktor.client.request.header
+import io.ktor.client.request.onUpload
 import io.ktor.client.request.prepareRequest
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
@@ -39,7 +40,7 @@ class NextcloudService(private val client: io.ktor.client.HttpClient = HttpClien
         return files.firstOrNull() ?: throw NextcloudServiceError.invalidResponse
     }
 
-    suspend fun listFiles(baseURL: String, token: String, password: String? = nil): List<NextcloudFile> =
+    suspend fun listFiles(baseURL: String, token: String, password: String? = null): List<NextcloudFile> =
         propfind(baseURL, token, password, depth = "1").drop(1).filter { it.isMedia }
 
     suspend fun uploadFile(

@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class, kotlin.uuid.ExperimentalUuidApi::class)
+
 package com.skript.omnialbum.providers.immich
 
 import com.skript.omnialbum.model.AlbumDetail
@@ -13,6 +15,7 @@ import com.skript.omnialbum.net.ApiVersionCatalog
 import com.skript.omnialbum.net.HttpClientHolder
 import com.skript.omnialbum.net.UnsupportedApiVersionException
 import com.skript.omnialbum.net.buildUrl
+import com.skript.omnialbum.net.explicitPortOrNull
 import com.skript.omnialbum.net.encodePathSegment
 import com.skript.omnialbum.platform.platformDeviceId
 import com.skript.omnialbum.providers.AssetVariant
@@ -20,17 +23,19 @@ import com.skript.omnialbum.providers.ParsedShareLinkResult
 import com.skript.omnialbum.providers.ProviderError
 import com.skript.omnialbum.providers.ShareLinkProvider
 import com.skript.omnialbum.providers.SharedLinkInfo
-import io.ktor.client.request.post
 import io.ktor.client.request.header
+import io.ktor.client.request.onUpload
+import io.ktor.client.request.post
 import io.ktor.client.request.preparePost
 import io.ktor.client.request.setBody
-import io.ktor.client.request.url
-import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.body
+import io.ktor.client.statement.bodyAsText
+import io.ktor.client.call.body
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.content.MultiPartFormDataContent
+import io.ktor.http.content.formData
 import io.ktor.http.isSuccess
 import kotlinx.serialization.json.Json
 
@@ -104,7 +109,7 @@ class ImmichProvider : ShareLinkProvider {
         }
         val scheme = url.protocol.name
         var base = "$scheme://$host"
-        val port = url.explicitPort
+        val port = url.explicitPortOrNull()
         if (port != null && !(scheme == "https" && port == 443) && !(scheme == "http" && port == 80)) {
             base += ":$port"
         }
@@ -219,12 +224,9 @@ class ImmichProvider : ShareLinkProvider {
         val client = HttpClientHolder.client
         val query = mutableListOf("key" to task.shareKey)
         if (!task.password.isNullOrEmpty()) query.add("password" to task.password)
-        val response: HttpResponse = client.preparePost {
-            url(buildUrl(task.baseURL, "${selected.pathPrefix}/assets", query))
+        val response: HttpResponse = client.preparePost(buildUrl(task.baseURL, "${selected.pathPrefix}/assets", query)) {
             val boundary = "boundary-${task.id}"
-            headers {
-                append(HttpHeaders.ContentType, "multipart/form-data; boundary=$boundary")
-            }
+            header(HttpHeaders.ContentType, "multipart/form-data; boundary=$boundary")
             setBody(buildMultipartBody(boundary, fileData, task, mimeType))
             onUpload { bytesSentTotal, contentLength ->
                 if (contentLength > 0) progressHandler(minOf(bytesSentTotal.toDouble() / contentLength, 0.99))
@@ -242,8 +244,7 @@ class ImmichProvider : ShareLinkProvider {
     private suspend fun addAssetToAlbum(client: io.ktor.client.HttpClient, task: UploadTask, assetId: String) {
         val query = mutableListOf("key" to task.shareKey)
         if (!task.password.isNullOrEmpty()) query.add("password" to task.password)
-        val response = client.post {
-            url(buildUrl(task.baseURL, "${selected.pathPrefix}/albums/${encodePathSegment(task.albumId)}/assets", query))
+        val response = client.post(buildUrl(task.baseURL, "${selected.pathPrefix}/albums/${encodePathSegment(task.albumId)}/assets", query)) {
             header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             setBody(Json.encodeToString(mapOf("ids" to listOf(assetId))))
         }
@@ -266,10 +267,14 @@ class ImmichProvider : ShareLinkProvider {
                 append("fileCreatedAt", isoCreated)
                 append("fileModifiedAt", isoCreated)
                 append("isFavorite", "false")
-                append("assetData", fileData, headers {
-                    append(HttpHeaders.ContentDisposition, "form-data; name=\"assetData\"; filename=\"${task.fileName}\"")
-                    append(HttpHeaders.ContentType, mimeType)
-                })
+                append(
+                    "assetData",
+                    fileData,
+                    Headers.build {
+                        append(HttpHeaders.ContentDisposition, "form-data; name=\"assetData\"; filename=\"${task.fileName}\"")
+                        append(HttpHeaders.ContentType, mimeType)
+                    }
+                )
             }
         )
     }
