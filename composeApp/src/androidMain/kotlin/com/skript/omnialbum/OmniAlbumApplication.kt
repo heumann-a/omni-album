@@ -1,7 +1,7 @@
 package com.skript.omnialbum
 
 import android.app.Application
-import com.skript.omnialbum.net.appContext
+import com.skript.omnialbum.platform.appContext
 import com.skript.omnialbum.providers.registerAllProviders
 
 class OmniAlbumApplication : Application() {

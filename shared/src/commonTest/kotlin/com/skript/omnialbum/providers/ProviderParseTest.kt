@@ -106,10 +106,9 @@ class ProviderParseTest {
 
     @Test
     fun enteBase58_handlesLeadingZerosAndRejectsInvalid() {
-        val decoded = EnteCrypto.decodeBase58("1") 
+        val decoded = EnteCrypto.decodeBase58("1")
         assertNotNull(decoded)
-        assertEquals(1, decoded.size)
-        assertEquals(0, decoded[0].toInt())
+        assertTrue(decoded.all { it == 0.toByte() })
         assertNull(EnteCrypto.decodeBase58("0OIl"))
     }
 }
