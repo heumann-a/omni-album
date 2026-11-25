@@ -1,25 +1,31 @@
 package com.skript.omnialbum.repository
 
-import app.cash.sqldelight.coroutines.asFlow
-import app.cash.sqldelight.coroutines.executeAsList
 import com.skript.omnialbum.db.Albums
 import com.skript.omnialbum.db.DatabaseHolder
 import com.skript.omnialbum.model.DisplayAlbum
 import com.skript.omnialbum.model.PhotoProvider
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalTime::class)
 class AlbumRepository private constructor() {
 
-    private val queries get() = DatabaseHolder.database.albumsQueries
+    private val queries get() = DatabaseHolder.database.queriesQueries
 
-    fun albumsFlow(): Flow<List<DisplayAlbum>> =
-        queries.selectAllOrdered().asFlow().map { it.executeAsList().map(::toDisplayAlbum) }
+    private val _albums = MutableStateFlow<List<DisplayAlbum>>(emptyList())
+    val albums: StateFlow<List<DisplayAlbum>> = _albums
 
-    suspend fun addAlbum(album: DisplayAlbum) {
+    init {
+        refresh()
+    }
+
+    fun refresh() {
+        _albums.value = queries.selectAllOrdered().executeAsList().map(::toDisplayAlbum)
+    }
+
+    fun addAlbum(album: DisplayAlbum) {
         queries.insertAlbum(
             id = album.id,
             album_name = album.albumName,
@@ -35,21 +41,24 @@ class AlbumRepository private constructor() {
             provider = album.provider.name.lowercase(),
             created_at = Clock.System.now().toString()
         )
+        refresh()
     }
 
-    suspend fun updateAlbumData(albumId: String, assetCount: Int, thumbnailId: String?) {
+    fun updateAlbumData(albumId: String, assetCount: Int, thumbnailId: String?) {
         queries.updateAlbumData(
             asset_count = assetCount.toLong(),
             album_thumbnail_asset_id = thumbnailId,
             album_id = albumId
         )
+        refresh()
     }
 
-    suspend fun deleteAlbum(id: String) {
+    fun deleteAlbum(id: String) {
         queries.deleteAlbum(id)
+        refresh()
     }
 
-    suspend fun contains(id: String): Boolean = queries.existsById(id).executeAsOne()
+    fun contains(id: String): Boolean = queries.existsById(id).executeAsOne()
 
     private fun toDisplayAlbum(row: Albums): DisplayAlbum = DisplayAlbum(
         id = row.id,

@@ -26,10 +26,11 @@ class AggregatorViewModel(
 
     init {
         scope.launch {
-            repository.albumsFlow().collect { _albums.value = it }
+            repository.albums.collect { _albums.value = it }
             _isLoading.value = false
         }
     }
+
 
     suspend fun addAlbum(shareLinkURL: String, providerType: PhotoProvider, password: String? = null) {
         _errorMessage.value = null
