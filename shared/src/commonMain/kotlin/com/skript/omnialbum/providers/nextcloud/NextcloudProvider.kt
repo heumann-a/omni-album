@@ -20,7 +20,7 @@ import com.skript.omnialbum.providers.ParsedShareLinkResult
 import com.skript.omnialbum.providers.ShareLinkProvider
 import com.skript.omnialbum.providers.SharedLinkInfo
 import io.ktor.http.Url
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 class NextcloudShareLinkException(message: String) : Exception(message)
 
@@ -197,7 +197,7 @@ class NextcloudProvider : ShareLinkProvider {
         val base = normalizeBaseURL(baseURL) ?: return null
         val baseUrl = Url(base)
         var authBase = "${baseUrl.protocol.name}://${encodePathSegment(shareKey)}:@${baseUrl.host}"
-        baseUrl.explicitPort?.let { authBase += ":$it" }
+        baseUrl.explicitPortOrNull()?.let { authBase += ":$it" }
         return "$authBase/remote.php/dav/photospublic/$shareKey/${encodePathSegment(hrefName)}"
     }
 

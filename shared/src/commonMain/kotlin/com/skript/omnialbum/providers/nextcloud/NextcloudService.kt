@@ -4,7 +4,7 @@ import com.skript.omnialbum.net.HttpClientHolder
 import com.skript.omnialbum.net.buildUrl
 import com.skript.omnialbum.net.normalizeBaseURL
 import io.ktor.client.request.header
-import io.ktor.client.request.onUpload
+import io.ktor.client.plugins.onUpload
 import io.ktor.client.request.prepareRequest
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody

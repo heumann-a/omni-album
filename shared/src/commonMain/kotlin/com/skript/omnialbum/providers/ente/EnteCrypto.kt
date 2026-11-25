@@ -58,7 +58,7 @@ object EnteCrypto {
                     state = stateAndHeader.state,
                     ciphertext = chunk.toUByteArray()
                 )
-                out.write(pulled.message.toByteArray())
+                out.write(pulled.decryptedData.toByteArray())
                 offset = end
             }
             out.toByteArray()

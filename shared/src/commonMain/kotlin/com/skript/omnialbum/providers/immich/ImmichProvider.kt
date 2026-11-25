@@ -24,7 +24,7 @@ import com.skript.omnialbum.providers.ProviderError
 import com.skript.omnialbum.providers.ShareLinkProvider
 import com.skript.omnialbum.providers.SharedLinkInfo
 import io.ktor.client.request.header
-import io.ktor.client.request.onUpload
+import io.ktor.client.plugins.onUpload
 import io.ktor.client.request.post
 import io.ktor.client.request.preparePost
 import io.ktor.client.request.setBody
@@ -34,8 +34,8 @@ import io.ktor.client.call.body
 import io.ktor.http.ContentType
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
-import io.ktor.http.content.MultiPartFormDataContent
-import io.ktor.http.content.formData
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
 import io.ktor.http.isSuccess
 import kotlinx.serialization.json.Json
 

@@ -1,6 +1,7 @@
 @file:OptIn(kotlin.time.ExperimentalTime::class)
 
 package com.skript.omnialbum.providers.lychee
+import com.skript.omnialbum.net.explicitPortOrNull
 
 import com.skript.omnialbum.model.AlbumDetail
 import com.skript.omnialbum.model.Asset
@@ -15,7 +16,7 @@ import com.skript.omnialbum.providers.ParsedShareLinkResult
 import com.skript.omnialbum.providers.ShareLinkProvider
 import com.skript.omnialbum.providers.SharedLinkInfo
 import io.ktor.http.Url
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 enum class LycheeApiVersion(
     override val id: String,
