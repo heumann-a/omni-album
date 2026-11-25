@@ -1,5 +1,7 @@
 package com.skript.omnialbum.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -264,7 +266,7 @@ private fun AssetCell(asset: Asset, url: String?, onClick: () -> Unit) {
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(MaterialTheme.shapes.small)
-            .then(androidx.compose.foundation.clickable(onClick = onClick))
+            .clickable(onClick = onClick)
     ) {
         CachedImage(model = url, modifier = Modifier.fillMaxSize())
         if (asset.type == com.skript.omnialbum.model.AssetType.VIDEO) {
@@ -280,15 +282,4 @@ private fun AssetCell(asset: Asset, url: String?, onClick: () -> Unit) {
     }
 }
 
-@Composable
-private fun InfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
-        Text(value, style = MaterialTheme.typography.bodyMedium)
-    }
-}
+

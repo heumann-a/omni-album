@@ -1,5 +1,6 @@
 package com.skript.omnialbum.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -179,7 +180,8 @@ fun AddAlbumSheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                            .padding(vertical = 4.dp)
+                            .clickable { selectedProvider = provider },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         ProviderBadge(provider, 32)
@@ -189,9 +191,6 @@ fun AddAlbumSheet(
                             Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
                         }
                     }
-                    androidx.compose.foundation.clickable {
-                        selectedProvider = provider
-                    }.let { /* clickable applied below via Modifier in Row */ }
                 }
 
                 if (selectedProvider == PhotoProvider.IMMICH && !requiresPassword) {

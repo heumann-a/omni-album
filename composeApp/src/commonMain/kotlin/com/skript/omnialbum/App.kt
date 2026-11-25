@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Settings
@@ -89,7 +90,9 @@ fun App(appState: AppState = remember { AppState() }) {
                             modifier = Modifier
                                 .align(Alignment.TopCenter)
                                 .padding(top = 8.dp),
-                            containerColor = MaterialTheme.colorScheme.errorContainer
+                            colors = androidx.compose.material3.CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,

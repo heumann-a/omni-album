@@ -1,5 +1,6 @@
 package com.skript.omnialbum.ui
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -288,7 +289,7 @@ private fun androidx.compose.ui.Modifier.pointerInputWithLongPress(
     onClick: () -> Unit,
     onLongPress: () -> Unit
 ): androidx.compose.ui.Modifier = this.then(
-    androidx.compose.foundation.combinedClickable(
+    combinedClickable(
         onClick = onClick,
         onLongClick = onLongPress
     )

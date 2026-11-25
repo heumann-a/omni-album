@@ -1,7 +1,10 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package com.skript.omnialbum.platform
 
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSString
+import platform.Foundation.stringWithContentsOfURL
 import platform.Foundation.NSURL
 import platform.Foundation.writeToFile
 import platform.UIKit.UIActivityViewController

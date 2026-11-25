@@ -1,6 +1,10 @@
 package com.skript.omnialbum.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
@@ -28,11 +32,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
-import coil3.network.ktor3.KtorNetworkFetcherFactory
-import coil3.PlatformContext
-import coil3.memory.MemoryCache
 import com.skript.omnialbum.model.PhotoProvider
-import com.skript.omnialbum.net.HttpClientHolder
+import com.skript.omnialbum.platform.appImageLoader
+
+@Composable
+internal fun InfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+        Text(value, style = MaterialTheme.typography.bodyMedium)
+    }
+}
 
 fun providerColor(provider: PhotoProvider): Color = when (provider) {
     PhotoProvider.IMMICH -> Color(0xFF2196F3)
@@ -42,16 +56,7 @@ fun providerColor(provider: PhotoProvider): Color = when (provider) {
     PhotoProvider.ENTE -> Color(0xFF9C27B0)
 }
 
-fun imageLoader(): ImageLoader = ImageLoader.Builder(PlatformContext.INSTANCE)
-    .components {
-        add(KtorNetworkFetcherFactory { HttpClientHolder.client })
-    }
-    .memoryCache {
-        MemoryCache.Builder()
-            .maxSizeBytes(150 * 1024 * 1024)
-            .build()
-    }
-    .build()
+fun imageLoader(): ImageLoader = appImageLoader
 
 @Composable
 fun ProviderBadge(provider: PhotoProvider, sizeDp: Int, modifier: Modifier = Modifier) {
