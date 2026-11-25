@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -85,7 +87,7 @@ fun CachedImage(
     if (model == null) {
         Box(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
             Icon(
-                imageVector = androidx.compose.material.icons.Icons.Default.PhotoLibrary,
+                imageVector = Icons.Default.PhotoLibrary,
                 contentDescription = null,
                 modifier = Modifier
                     .align(Alignment.Center)
