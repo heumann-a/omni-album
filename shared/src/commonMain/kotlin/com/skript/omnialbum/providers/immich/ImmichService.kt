@@ -9,12 +9,13 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.body
 import io.ktor.http.isSuccess
 
-class ImmichServiceError(message: String) : Exception(message) {
+class ImmichServiceError(message: String, val httpStatus: Int? = null) : Exception(message) {
     companion object {
         fun httpError(status: Int, message: String?): ImmichServiceError {
             val msg = message?.takeIf { it.isNotBlank() }
             return ImmichServiceError(
-                if (msg != null) "Server error ($status): $msg" else "Server error: $status"
+                if (msg != null) "Server error ($status): $msg" else "Server error: $status",
+                httpStatus = status
             )
         }
     }
@@ -27,7 +28,8 @@ class ImmichService(private val client: HttpClient) {
         key: String? = null,
         slug: String? = null,
         token: String? = null,
-        password: String? = null
+        password: String? = null,
+        apiPathPrefix: String = ImmichApiVersion.V1.pathPrefix
     ): SharedLinkResponse {
         val base = normalizeBaseURL(baseURL)
             ?: throw ImmichServiceError("Invalid server URL: $baseURL")
@@ -36,7 +38,7 @@ class ImmichService(private val client: HttpClient) {
         if (!slug.isNullOrEmpty()) query.add("slug" to slug)
         if (!token.isNullOrEmpty()) query.add("token" to token)
         if (!password.isNullOrEmpty()) query.add("password" to password)
-        val response = client.get(buildUrl(base, "/api/shared-links/me", query))
+        val response = client.get(buildUrl(base, "$apiPathPrefix/shared-links/me", query))
         return response.unwrap { it.body() }
     }
 
@@ -44,13 +46,14 @@ class ImmichService(private val client: HttpClient) {
         baseURL: String,
         albumId: String,
         shareKey: String,
-        password: String? = null
+        password: String? = null,
+        apiPathPrefix: String = ImmichApiVersion.V1.pathPrefix
     ): AlbumWithAssetsResponse {
         val base = normalizeBaseURL(baseURL)
             ?: throw ImmichServiceError("Invalid server URL: $baseURL")
         val query = mutableListOf("key" to shareKey)
         if (!password.isNullOrEmpty()) query.add("password" to password)
-        val response = client.get(buildUrl(base, "/api/albums/$albumId", query))
+        val response = client.get(buildUrl(base, "$apiPathPrefix/albums/$albumId", query))
         return response.unwrap { it.body() }
     }
 

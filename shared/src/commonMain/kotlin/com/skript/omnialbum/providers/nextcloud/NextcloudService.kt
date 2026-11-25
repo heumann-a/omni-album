@@ -13,7 +13,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import kotlin.io.encoding.Base64
 
-class NextcloudServiceError(message: String) : Exception(message) {
+class NextcloudServiceError(message: String, val httpStatus: Int? = null) : Exception(message) {
     companion object {
         val invalidResponse = NextcloudServiceError("Invalid response from server.")
         val xmlParsingError = NextcloudServiceError("Failed to parse server response.")
@@ -25,7 +25,8 @@ class NextcloudServiceError(message: String) : Exception(message) {
         fun httpError(status: Int, message: String?): NextcloudServiceError {
             val msg = message?.takeIf { it.isNotBlank() }
             return NextcloudServiceError(
-                if (msg != null) "Server error ($status): $msg" else "Server error: $status"
+                if (msg != null) "Server error ($status): $msg" else "Server error: $status",
+                httpStatus = status
             )
         }
     }
@@ -69,6 +70,20 @@ class NextcloudService(private val client: io.ktor.client.HttpClient = HttpClien
             throw NextcloudServiceError.httpError(response.status.value, "Upload failed")
         }
         progressHandler(1.0)
+    }
+
+    suspend fun probeAlbumExists(baseURL: String, token: String, password: String?): Boolean {
+        val base = normalizeBaseURL(baseURL)
+            ?: throw NextcloudServiceError.invalidBaseURL(baseURL)
+        val url = buildUrl(base, "/remote.php/dav/photospublic/$token")
+        val response = client.request(url) {
+            method = HttpMethod("PROPFIND")
+            header("Depth", "0")
+            header(HttpHeaders.ContentType, "application/xml")
+            header(HttpHeaders.Authorization, basicAuth(token, password))
+            setBody(buildPropfindBody())
+        }
+        return response.status.value == 207 || response.status.value in 200..299
     }
 
     private suspend fun propfind(

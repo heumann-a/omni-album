@@ -41,6 +41,19 @@ swift-sodium, independently audited binding), WorkManager (upload queue,
 replaces BGTaskScheduler), Glance (widget, replaces WidgetKit on Android),
 App Search (replaces Spotlight).
 
+## API versioning
+
+Every provider declares an `ApiVersionCatalog` (see
+`shared/.../net/ApiVersion.kt`): a list of supported API versions with exactly
+one marked current, plus the URL path prefix each version uses. Providers expose
+`supportedApiVersions` / `currentApiVersion` / `selectedApiVersion` on the
+`ShareLinkProvider` interface and implement `detectApiVersion()`, which probes
+supported versions current-first and falls back to legacy ones on 404 (e.g.
+Lychee supports legacy `v1` (`/api`) and current `v2` (`/api/v2`)). Adding a new
+API version = adding one enum entry; old versions keep working until removed
+from the catalog. CI (`.github/workflows/build.yml`) runs Android compile +
+unit tests on ubuntu and iOS framework link + tests on macOS for every PR.
+
 ## Phases
 
 1. **Scaffold** (done in this PR): Gradle/KMP modules, version catalog,
@@ -65,9 +78,10 @@ App Search (replaces Spotlight).
 7. **Assets & distribution**: adaptive icon, provider logos, splash; Play
    Console / App Store Connect readiness (signing, privacy manifest, photo
    permissions), sideload build docs.
-8. **Tests & docs**: provider/crypto/CSV unit tests, Compose UI tests,
-   README/CLAUDE.md update, cutover checklist for removing the legacy
-   SwiftUI target.
+8. **Tests, CI & docs**: provider/crypto/CSV unit tests (incl. API-version
+   catalog tests), Compose UI tests, GitHub Actions workflow
+   (`.github/workflows/build.yml`, added), README/CLAUDE.md update, cutover
+   checklist for removing the legacy SwiftUI target.
 
 ## Verification note
 

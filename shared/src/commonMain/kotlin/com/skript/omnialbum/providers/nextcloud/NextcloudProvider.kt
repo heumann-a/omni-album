@@ -6,6 +6,9 @@ import com.skript.omnialbum.model.AssetExif
 import com.skript.omnialbum.model.AssetType
 import com.skript.omnialbum.model.PhotoProvider
 import com.skript.omnialbum.model.UploadTask
+import com.skript.omnialbum.net.ApiVersion
+import com.skript.omnialbum.net.ApiVersionCatalog
+import com.skript.omnialbum.net.UnsupportedApiVersionException
 import com.skript.omnialbum.net.buildUrl
 import com.skript.omnialbum.net.encodePathSegment
 import com.skript.omnialbum.net.normalizeBaseURL
@@ -18,10 +21,53 @@ import kotlinx.datetime.Clock
 
 class NextcloudShareLinkException(message: String) : Exception(message)
 
+enum class NextcloudApiVersion(
+    override val id: String,
+    override val isCurrent: Boolean,
+    override val pathPrefix: String
+) : ApiVersion {
+    V1("v1", true, "");
+
+    companion object {
+        val catalog = ApiVersionCatalog(values().toList())
+    }
+}
+
 class NextcloudProvider : ShareLinkProvider {
     override val providerType: PhotoProvider = PhotoProvider.NEXTCLOUD
 
     private val service = NextcloudService()
+
+    private var selected = NextcloudApiVersion.catalog.current
+
+    override val supportedApiVersions: List<String>
+        get() = NextcloudApiVersion.catalog.supportedIds
+
+    override val currentApiVersion: String
+        get() = NextcloudApiVersion.catalog.current.id
+
+    override var selectedApiVersion: String
+        get() = selected.id
+        set(value) {
+            selected = NextcloudApiVersion.catalog.requireSupported(value)
+        }
+
+    override suspend fun detectApiVersion(
+        baseURL: String,
+        key: String?,
+        token: String?,
+        password: String?
+    ): String {
+        val shareToken = token ?: key
+        if (shareToken.isNullOrEmpty()) throw NextcloudShareLinkException("Share link must include an album token.")
+        for (version in NextcloudApiVersion.catalog.versions.sortedByDescending { it.isCurrent }) {
+            if (service.probeAlbumExists(baseURL, shareToken, password)) {
+                selected = version
+                return version.id
+            }
+        }
+        throw UnsupportedApiVersionException("?", supportedApiVersions)
+    }
 
     override fun canHandle(urlString: String): Boolean =
         urlString.contains("/apps/photos/public/")

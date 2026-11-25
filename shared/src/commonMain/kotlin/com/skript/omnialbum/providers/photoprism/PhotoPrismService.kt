@@ -15,7 +15,7 @@ import io.ktor.http.isSuccess
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-class PhotoPrismServiceError(message: String) : Exception(message) {
+class PhotoPrismServiceError(message: String, val httpStatus: Int? = null) : Exception(message) {
     companion object {
         fun invalidBaseURL(url: String) = PhotoPrismServiceError("Invalid server URL: $url")
         val invalidResponse = PhotoPrismServiceError("Invalid response from server.")
@@ -28,7 +28,8 @@ class PhotoPrismServiceError(message: String) : Exception(message) {
         fun httpError(status: Int, message: String?): PhotoPrismServiceError {
             val msg = message?.takeIf { it.isNotBlank() }
             return PhotoPrismServiceError(
-                if (msg != null) "Server error ($status): $msg" else "Server error: $status"
+                if (msg != null) "Server error ($status): $msg" else "Server error: $status",
+                httpStatus = status
             )
         }
     }
@@ -40,22 +41,28 @@ class PhotoPrismService(private val client: io.ktor.client.HttpClient = HttpClie
         baseURL: String,
         token: String,
         slug: String?,
-        password: String?
+        password: String?,
+        apiPathPrefix: String = PhotoPrismApiVersion.V1.pathPrefix
     ): PhotoPrismShareInfo {
         val base = normalizeBaseURL(baseURL)
             ?: throw PhotoPrismServiceError.invalidBaseURL(baseURL)
         val albumUID = fetchAlbumUIDFromSharePage(base, token, slug)
-        val session = establishSession(base, token, password)
+        val session = establishSession(base, token, password, apiPathPrefix)
         return PhotoPrismShareInfo(session = session, albumUID = albumUID, albumTitle = null)
     }
 
-    suspend fun establishSession(base: String, token: String, password: String?): PhotoPrismSession {
-        runCatching { getSession(base) }.getOrNull()?.let { return it }
-        return postSession(base, token, password)
+    suspend fun establishSession(
+        base: String,
+        token: String,
+        password: String?,
+        apiPathPrefix: String = PhotoPrismApiVersion.V1.pathPrefix
+    ): PhotoPrismSession {
+        runCatching { getSession(base, apiPathPrefix) }.getOrNull()?.let { return it }
+        return postSession(base, token, password, apiPathPrefix)
     }
 
-    private suspend fun getSession(base: String): PhotoPrismSession {
-        val response = client.get(buildUrl(base, "/api/v1/session")) {
+    private suspend fun getSession(base: String, apiPathPrefix: String): PhotoPrismSession {
+        val response = client.get(buildUrl(base, "$apiPathPrefix/session")) {
             header(HttpHeaders.Accept, ContentType.Application.Json)
         }
         if (!response.status.isSuccess()) throw PhotoPrismServiceError.invalidResponse
@@ -74,8 +81,13 @@ class PhotoPrismService(private val client: io.ktor.client.HttpClient = HttpClie
         )
     }
 
-    private suspend fun postSession(base: String, token: String, password: String?): PhotoPrismSession {
-        val response = client.post(buildUrl(base, "/api/v1/session")) {
+    private suspend fun postSession(
+        base: String,
+        token: String,
+        password: String?,
+        apiPathPrefix: String
+    ): PhotoPrismSession {
+        val response = client.post(buildUrl(base, "$apiPathPrefix/session")) {
             header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             val body = mutableMapOf("token" to token)
             if (!password.isNullOrEmpty()) body["password"] = password
@@ -122,7 +134,8 @@ class PhotoPrismService(private val client: io.ktor.client.HttpClient = HttpClie
         albumUID: String,
         accessToken: String?,
         count: Int = 100,
-        offset: Int = 0
+        offset: Int = 0,
+        apiPathPrefix: String = PhotoPrismApiVersion.V1.pathPrefix
     ): Pair<List<PhotoPrismPhoto>, Int?> {
         val base = normalizeBaseURL(baseURL)
             ?: throw PhotoPrismServiceError.invalidBaseURL(baseURL)
@@ -133,7 +146,7 @@ class PhotoPrismService(private val client: io.ktor.client.HttpClient = HttpClie
             "merged" to "true",
             "public" to "true"
         )
-        val response = client.get(buildUrl(base, "/api/v1/photos", query)) {
+        val response = client.get(buildUrl(base, "$apiPathPrefix/photos", query)) {
             accessToken?.let { header("X-Auth-Token", it) }
         }
         if (!response.status.isSuccess()) {
@@ -144,12 +157,17 @@ class PhotoPrismService(private val client: io.ktor.client.HttpClient = HttpClie
         return photos to totalCount
     }
 
-    suspend fun fetchAllPhotos(baseURL: String, albumUID: String, accessToken: String?): List<PhotoPrismPhoto> {
+    suspend fun fetchAllPhotos(
+        baseURL: String,
+        albumUID: String,
+        accessToken: String?,
+        apiPathPrefix: String = PhotoPrismApiVersion.V1.pathPrefix
+    ): List<PhotoPrismPhoto> {
         val pageSize = 100
         val allPhotos = mutableListOf<PhotoPrismPhoto>()
         var offset = 0
         while (true) {
-            val (photos, _) = searchPhotos(baseURL, albumUID, accessToken, count = pageSize, offset = offset)
+            val (photos, _) = searchPhotos(baseURL, albumUID, accessToken, count = pageSize, offset = offset, apiPathPrefix = apiPathPrefix)
             allPhotos.addAll(photos)
             if (photos.size < pageSize) break
             offset += pageSize

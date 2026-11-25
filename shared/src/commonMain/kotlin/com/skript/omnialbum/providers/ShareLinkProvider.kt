@@ -4,6 +4,7 @@ import com.skript.omnialbum.model.AlbumDetail
 import com.skript.omnialbum.model.Asset
 import com.skript.omnialbum.model.PhotoProvider
 import com.skript.omnialbum.model.UploadTask
+import com.skript.omnialbum.net.UnsupportedApiVersionException
 
 class ProviderError(message: String) : Exception(message) {
     companion object {
@@ -42,6 +43,27 @@ interface ShareLinkProvider {
 
     val requiresClientDecryption: Boolean
         get() = false
+
+    val supportedApiVersions: List<String>
+        get() = listOf(currentApiVersion)
+
+    val currentApiVersion: String
+        get() = "v1"
+
+    var selectedApiVersion: String
+        get() = currentApiVersion
+        set(value) {
+            if (!supportedApiVersions.contains(value)) {
+                throw UnsupportedApiVersionException(value, supportedApiVersions)
+            }
+        }
+
+    suspend fun detectApiVersion(
+        baseURL: String,
+        key: String? = null,
+        token: String? = null,
+        password: String? = null
+    ): String = currentApiVersion
 
     fun canHandle(urlString: String): Boolean
 

@@ -8,7 +8,10 @@ import com.skript.omnialbum.model.AssetType
 import com.skript.omnialbum.model.PhotoProvider
 import com.skript.omnialbum.model.UploadResponse
 import com.skript.omnialbum.model.UploadTask
+import com.skript.omnialbum.net.ApiVersion
+import com.skript.omnialbum.net.ApiVersionCatalog
 import com.skript.omnialbum.net.HttpClientHolder
+import com.skript.omnialbum.net.UnsupportedApiVersionException
 import com.skript.omnialbum.net.buildUrl
 import com.skript.omnialbum.net.encodePathSegment
 import com.skript.omnialbum.platform.platformDeviceId
@@ -33,10 +36,58 @@ import kotlinx.serialization.json.Json
 
 class ImmichShareLinkParseException(message: String) : Exception(message)
 
+enum class ImmichApiVersion(
+    override val id: String,
+    override val isCurrent: Boolean,
+    override val pathPrefix: String
+) : ApiVersion {
+    V1("v1", true, "/api");
+
+    companion object {
+        val catalog = ApiVersionCatalog(values().toList())
+    }
+}
+
 class ImmichProvider : ShareLinkProvider {
     override val providerType: PhotoProvider = PhotoProvider.IMMICH
 
     private val service = ImmichService(HttpClientHolder.client)
+
+    private var selected = ImmichApiVersion.catalog.current
+
+    override val supportedApiVersions: List<String>
+        get() = ImmichApiVersion.catalog.supportedIds
+
+    override val currentApiVersion: String
+        get() = ImmichApiVersion.catalog.current.id
+
+    override var selectedApiVersion: String
+        get() = selected.id
+        set(value) {
+            selected = ImmichApiVersion.catalog.requireSupported(value)
+        }
+
+    override suspend fun detectApiVersion(
+        baseURL: String,
+        key: String?,
+        token: String?,
+        password: String?
+    ): String {
+        var lastError: Exception? = null
+        for (version in ImmichApiVersion.catalog.versions.sortedByDescending { it.isCurrent }) {
+            try {
+                service.fetchSharedLink(
+                    baseURL, key, null, token, password, apiPathPrefix = version.pathPrefix
+                )
+                selected = version
+                return version.id
+            } catch (e: ImmichServiceError) {
+                if (e.httpStatus != null && e.httpStatus != 404) throw e
+                lastError = e
+            }
+        }
+        throw lastError ?: UnsupportedApiVersionException("?", supportedApiVersions)
+    }
 
     override fun canHandle(urlString: String): Boolean = urlString.contains("/share/")
 
@@ -92,7 +143,7 @@ class ImmichProvider : ShareLinkProvider {
         token: String?,
         password: String?
     ): SharedLinkInfo {
-        val response = service.fetchSharedLink(baseURL, key, slug, token, password)
+        val response = service.fetchSharedLink(baseURL, key, slug, token, password, apiPathPrefix = selected.pathPrefix)
         val album = response.album ?: throw ImmichServiceError("Invalid response from server")
         return SharedLinkInfo(
             linkId = response.id,
@@ -113,7 +164,7 @@ class ImmichProvider : ShareLinkProvider {
         shareKey: String,
         password: String?
     ): AlbumDetail {
-        val response = service.fetchAlbumWithAssets(baseURL, albumId, shareKey, password)
+        val response = service.fetchAlbumWithAssets(baseURL, albumId, shareKey, password, apiPathPrefix = selected.pathPrefix)
         return AlbumDetail(
             albumName = response.albumName,
             description = response.description,
@@ -140,23 +191,23 @@ class ImmichProvider : ShareLinkProvider {
     }
 
     override fun thumbnailURL(baseURL: String, assetId: String, shareKey: String): String =
-        buildUrl(baseURL, "/api/assets/${encodePathSegment(assetId)}/thumbnail", listOf("key" to shareKey))
+        buildUrl(baseURL, "${selected.pathPrefix}/assets/${encodePathSegment(assetId)}/thumbnail", listOf("key" to shareKey))
 
     override fun previewURL(baseURL: String, asset: Asset, shareKey: String): String =
         buildUrl(
             baseURL,
-            "/api/assets/${encodePathSegment(asset.id)}/thumbnail",
+            "${selected.pathPrefix}/assets/${encodePathSegment(asset.id)}/thumbnail",
             listOf("key" to shareKey, "size" to "preview", "edited" to "true")
         )
 
     override fun originalURL(baseURL: String, asset: Asset, shareKey: String): String =
-        buildUrl(baseURL, "/api/assets/${encodePathSegment(asset.id)}/original", listOf("key" to shareKey))
+        buildUrl(baseURL, "${selected.pathPrefix}/assets/${encodePathSegment(asset.id)}/original", listOf("key" to shareKey))
 
     override fun videoPlaybackURL(baseURL: String, asset: Asset, shareKey: String): String? {
         if (asset.type != AssetType.VIDEO) return null
         val query = mutableListOf("key" to shareKey)
         asset.providerData?.get("checksum")?.let { query.add("c" to it) }
-        return buildUrl(baseURL, "/api/assets/${encodePathSegment(asset.id)}/video/playback", query)
+        return buildUrl(baseURL, "${selected.pathPrefix}/assets/${encodePathSegment(asset.id)}/video/playback", query)
     }
 
     override suspend fun uploadAsset(
@@ -169,7 +220,7 @@ class ImmichProvider : ShareLinkProvider {
         val query = mutableListOf("key" to task.shareKey)
         if (!task.password.isNullOrEmpty()) query.add("password" to task.password)
         val response: HttpResponse = client.preparePost {
-            url(buildUrl(task.baseURL, "/api/assets", query))
+            url(buildUrl(task.baseURL, "${selected.pathPrefix}/assets", query))
             val boundary = "boundary-${task.id}"
             headers {
                 append(HttpHeaders.ContentType, "multipart/form-data; boundary=$boundary")
@@ -192,7 +243,7 @@ class ImmichProvider : ShareLinkProvider {
         val query = mutableListOf("key" to task.shareKey)
         if (!task.password.isNullOrEmpty()) query.add("password" to task.password)
         val response = client.post {
-            url(buildUrl(task.baseURL, "/api/albums/${encodePathSegment(task.albumId)}/assets", query))
+            url(buildUrl(task.baseURL, "${selected.pathPrefix}/albums/${encodePathSegment(task.albumId)}/assets", query))
             header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             setBody(Json.encodeToString(mapOf("ids" to listOf(assetId))))
         }

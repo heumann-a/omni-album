@@ -6,6 +6,8 @@ import com.skript.omnialbum.model.AssetExif
 import com.skript.omnialbum.model.AssetType
 import com.skript.omnialbum.model.PhotoProvider
 import com.skript.omnialbum.model.UploadTask
+import com.skript.omnialbum.net.ApiVersion
+import com.skript.omnialbum.net.ApiVersionCatalog
 import com.skript.omnialbum.platform.platformCacheDir
 import com.skript.omnialbum.providers.AssetVariant
 import com.skript.omnialbum.providers.ParsedShareLinkResult
@@ -25,9 +27,35 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 
+enum class EnteApiVersion(
+    override val id: String,
+    override val isCurrent: Boolean,
+    override val pathPrefix: String
+) : ApiVersion {
+    V1("v1", true, "");
+
+    companion object {
+        val catalog = ApiVersionCatalog(values().toList())
+    }
+}
+
 class EnteProvider : ShareLinkProvider {
     override val providerType: PhotoProvider = PhotoProvider.ENTE
     override val requiresClientDecryption: Boolean = true
+
+    private var selected = EnteApiVersion.catalog.current
+
+    override val supportedApiVersions: List<String>
+        get() = EnteApiVersion.catalog.supportedIds
+
+    override val currentApiVersion: String
+        get() = EnteApiVersion.catalog.current.id
+
+    override var selectedApiVersion: String
+        get() = selected.id
+        set(value) {
+            selected = EnteApiVersion.catalog.requireSupported(value)
+        }
 
     override fun canHandle(urlString: String): Boolean {
         val url = runCatching { Url(urlString) }.getOrNull() ?: return false

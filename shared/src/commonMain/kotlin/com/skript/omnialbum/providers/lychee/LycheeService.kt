@@ -18,7 +18,7 @@ import io.ktor.http.isSuccess
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-class LycheeServiceError(message: String) : Exception(message) {
+class LycheeServiceError(message: String, val httpStatus: Int? = null) : Exception(message) {
     companion object {
         val invalidBaseURL = LycheeServiceError("Invalid Lychee server URL.")
         val invalidResponse = LycheeServiceError("Invalid response from Lychee server.")
@@ -29,7 +29,8 @@ class LycheeServiceError(message: String) : Exception(message) {
         fun httpError(status: Int, message: String?): LycheeServiceError {
             val msg = message?.takeIf { it.isNotBlank() }
             return LycheeServiceError(
-                if (msg != null) "Server error ($status): $msg" else "Server error: $status"
+                if (msg != null) "Server error ($status): $msg" else "Server error: $status",
+                httpStatus = status
             )
         }
     }
@@ -42,8 +43,21 @@ class LycheeService(private val client: HttpClient = HttpClientHolder.client) {
         if (!response.status.isSuccess()) throw LycheeServiceError.albumNotFound
     }
 
-    suspend fun fetchAlbum(baseURL: String, albumId: String): LycheeAlbumResponse {
-        val response = client.get(buildUrl(baseURL, "/api/v2/Album", listOf("album_id" to albumId))) {
+    suspend fun probeApiVersion(baseURL: String, albumId: String, apiPathPrefix: String): Int {
+        val response = client.get(buildUrl(baseURL, "$apiPathPrefix/Album", listOf("album_id" to albumId))) {
+            header(HttpHeaders.Accept, ContentType.Application.Json.toString())
+            header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            xsrfToken(baseURL)?.let { header("X-XSRF-TOKEN", it) }
+        }
+        return response.status.value
+    }
+
+    suspend fun fetchAlbum(
+        baseURL: String,
+        albumId: String,
+        apiPathPrefix: String = LycheeApiVersion.V2.pathPrefix
+    ): LycheeAlbumResponse {
+        val response = client.get(buildUrl(baseURL, "$apiPathPrefix/Album", listOf("album_id" to albumId))) {
             header(HttpHeaders.Accept, ContentType.Application.Json.toString())
             header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             xsrfToken(baseURL)?.let { header("X-XSRF-TOKEN", it) }
@@ -58,8 +72,13 @@ class LycheeService(private val client: HttpClient = HttpClientHolder.client) {
         }
     }
 
-    suspend fun unlockAlbum(baseURL: String, albumId: String, password: String) {
-        val response = client.post(buildUrl(baseURL, "/api/v2/Album::unlock")) {
+    suspend fun unlockAlbum(
+        baseURL: String,
+        albumId: String,
+        password: String,
+        apiPathPrefix: String = LycheeApiVersion.V2.pathPrefix
+    ) {
+        val response = client.post(buildUrl(baseURL, "$apiPathPrefix/Album::unlock")) {
             header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             header(HttpHeaders.Accept, ContentType.Application.Json.toString())
             xsrfToken(baseURL)?.let { header("X-XSRF-TOKEN", it) }

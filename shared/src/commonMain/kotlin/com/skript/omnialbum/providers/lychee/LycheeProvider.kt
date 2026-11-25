@@ -6,16 +6,64 @@ import com.skript.omnialbum.model.AssetExif
 import com.skript.omnialbum.model.AssetType
 import com.skript.omnialbum.model.PhotoProvider
 import com.skript.omnialbum.model.UploadTask
+import com.skript.omnialbum.net.ApiVersion
+import com.skript.omnialbum.net.ApiVersionCatalog
+import com.skript.omnialbum.net.UnsupportedApiVersionException
 import com.skript.omnialbum.providers.ParsedShareLinkResult
 import com.skript.omnialbum.providers.ShareLinkProvider
 import com.skript.omnialbum.providers.SharedLinkInfo
 import io.ktor.http.Url
 import kotlinx.datetime.Clock
 
+enum class LycheeApiVersion(
+    override val id: String,
+    override val isCurrent: Boolean,
+    override val pathPrefix: String
+) : ApiVersion {
+    V1("v1", false, "/api"),
+    V2("v2", true, "/api/v2");
+
+    companion object {
+        val catalog = ApiVersionCatalog(values().toList())
+    }
+}
+
 class LycheeProvider : ShareLinkProvider {
     override val providerType: PhotoProvider = PhotoProvider.LYCHEE
 
     private val service = LycheeService()
+
+    private var selected = LycheeApiVersion.catalog.current
+
+    override val supportedApiVersions: List<String>
+        get() = LycheeApiVersion.catalog.supportedIds
+
+    override val currentApiVersion: String
+        get() = LycheeApiVersion.catalog.current.id
+
+    override var selectedApiVersion: String
+        get() = selected.id
+        set(value) {
+            selected = LycheeApiVersion.catalog.requireSupported(value)
+        }
+
+    override suspend fun detectApiVersion(
+        baseURL: String,
+        key: String?,
+        token: String?,
+        password: String?
+    ): String {
+        val albumId = key?.takeIf { it.isNotEmpty() } ?: throw LycheeServiceError.albumNotFound
+        service.initSession(baseURL, albumId)
+        for (version in LycheeApiVersion.catalog.versions.sortedByDescending { it.isCurrent }) {
+            val status = service.probeApiVersion(baseURL, albumId, version.pathPrefix)
+            if (status != 404) {
+                selected = version
+                return version.id
+            }
+        }
+        throw UnsupportedApiVersionException("?", supportedApiVersions)
+    }
 
     override fun canHandle(urlString: String): Boolean {
         val url = runCatching { Url(urlString) }.getOrNull() ?: return false
@@ -50,8 +98,8 @@ class LycheeProvider : ShareLinkProvider {
     ): SharedLinkInfo {
         val albumId = key?.takeIf { it.isNotEmpty() } ?: throw LycheeServiceError.albumNotFound
         service.initSession(baseURL, albumId)
-        if (!password.isNullOrEmpty()) service.unlockAlbum(baseURL, albumId, password)
-        val albumResponse = service.fetchAlbum(baseURL, albumId)
+        if (!password.isNullOrEmpty()) service.unlockAlbum(baseURL, albumId, password, selected.pathPrefix)
+        val albumResponse = service.fetchAlbum(baseURL, albumId, selected.pathPrefix)
         val resource = albumResponse.resource
         val isPasswordProtected = albumResponse.config?.isPasswordProtected == true ||
             resource.policy?.isPasswordRequired == true
@@ -79,8 +127,8 @@ class LycheeProvider : ShareLinkProvider {
         password: String?
     ): AlbumDetail {
         service.initSession(baseURL, shareKey)
-        if (!password.isNullOrEmpty()) service.unlockAlbum(baseURL, shareKey, password)
-        val albumResponse = service.fetchAlbum(baseURL, shareKey)
+        if (!password.isNullOrEmpty()) service.unlockAlbum(baseURL, shareKey, password, selected.pathPrefix)
+        val albumResponse = service.fetchAlbum(baseURL, shareKey, selected.pathPrefix)
         val resource = albumResponse.resource
         val isPasswordProtected = albumResponse.config?.isPasswordProtected == true ||
             resource.policy?.isPasswordRequired == true

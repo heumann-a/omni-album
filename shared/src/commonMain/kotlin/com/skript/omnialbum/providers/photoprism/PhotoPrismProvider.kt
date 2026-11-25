@@ -6,6 +6,9 @@ import com.skript.omnialbum.model.AssetExif
 import com.skript.omnialbum.model.AssetType
 import com.skript.omnialbum.model.PhotoProvider
 import com.skript.omnialbum.model.UploadTask
+import com.skript.omnialbum.net.ApiVersion
+import com.skript.omnialbum.net.ApiVersionCatalog
+import com.skript.omnialbum.net.UnsupportedApiVersionException
 import com.skript.omnialbum.net.normalizeBaseURL
 import com.skript.omnialbum.providers.ParsedShareLinkResult
 import com.skript.omnialbum.providers.ShareLinkProvider
@@ -19,10 +22,60 @@ class PhotoPrismShareLinkException(message: String) : Exception(message) {
     }
 }
 
+enum class PhotoPrismApiVersion(
+    override val id: String,
+    override val isCurrent: Boolean,
+    override val pathPrefix: String
+) : ApiVersion {
+    V1("v1", true, "/api/v1");
+
+    companion object {
+        val catalog = ApiVersionCatalog(values().toList())
+    }
+}
+
 class PhotoPrismProvider : ShareLinkProvider {
     override val providerType: PhotoProvider = PhotoProvider.PHOTOPRISM
 
     private val service = PhotoPrismService()
+
+    private var selected = PhotoPrismApiVersion.catalog.current
+
+    override val supportedApiVersions: List<String>
+        get() = PhotoPrismApiVersion.catalog.supportedIds
+
+    override val currentApiVersion: String
+        get() = PhotoPrismApiVersion.catalog.current.id
+
+    override var selectedApiVersion: String
+        get() = selected.id
+        set(value) {
+            selected = PhotoPrismApiVersion.catalog.requireSupported(value)
+        }
+
+    override suspend fun detectApiVersion(
+        baseURL: String,
+        key: String?,
+        token: String?,
+        password: String?
+    ): String {
+        val linkToken = token ?: key
+        if (linkToken.isNullOrEmpty()) throw PhotoPrismShareLinkException("Share link must include an album token.")
+        val base = normalizeBaseURL(baseURL)
+            ?: throw PhotoPrismServiceError.invalidBaseURL(baseURL)
+        var lastError: Exception? = null
+        for (version in PhotoPrismApiVersion.catalog.versions.sortedByDescending { it.isCurrent }) {
+            try {
+                service.establishSession(base, linkToken, password, version.pathPrefix)
+                selected = version
+                return version.id
+            } catch (e: PhotoPrismServiceError) {
+                if (e.httpStatus != null && e.httpStatus != 404) throw e
+                lastError = e
+            }
+        }
+        throw lastError ?: UnsupportedApiVersionException("?", supportedApiVersions)
+    }
 
     private fun buildCompositeKey(linkToken: String, previewToken: String, downloadToken: String, albumUID: String) =
         "$linkToken|$previewToken|$downloadToken|$albumUID"
@@ -72,13 +125,14 @@ class PhotoPrismProvider : ShareLinkProvider {
     ): SharedLinkInfo {
         val linkToken = token ?: key
         if (linkToken.isNullOrEmpty()) throw PhotoPrismShareLinkException("Share link must include an album token.")
-        val shareInfo = service.resolveShareLink(baseURL, linkToken, slug, password)
+        val shareInfo = service.resolveShareLink(baseURL, linkToken, slug, password, apiPathPrefix = selected.pathPrefix)
         val (photos, returnedCount) = service.searchPhotos(
             baseURL = baseURL,
             albumUID = shareInfo.albumUID,
             accessToken = shareInfo.session.accessToken,
             count = 10000,
-            offset = 0
+            offset = 0,
+            apiPathPrefix = selected.pathPrefix
         )
         val photoCount = returnedCount ?: photos.size
         val coverHash = photos.firstOrNull()?.primaryFileHash
@@ -116,8 +170,8 @@ class PhotoPrismProvider : ShareLinkProvider {
             ?: throw PhotoPrismShareLinkException("Share link must include an album token.")
         val base = normalizeBaseURL(baseURL)
             ?: throw PhotoPrismServiceError.invalidBaseURL(baseURL)
-        val ppSession = service.establishSession(base, keys[0], password)
-        val allPhotos = service.fetchAllPhotos(baseURL, keys[3], ppSession.accessToken)
+        val ppSession = service.establishSession(base, keys[0], password, selected.pathPrefix)
+        val allPhotos = service.fetchAllPhotos(baseURL, keys[3], ppSession.accessToken, selected.pathPrefix)
         val assets = allPhotos.mapNotNull { mapPhotoToAsset(it) }
         val now = Clock.System.now().toString()
         return AlbumDetail(
@@ -133,26 +187,26 @@ class PhotoPrismProvider : ShareLinkProvider {
 
     override fun thumbnailURL(baseURL: String, assetId: String, shareKey: String): String? {
         val keys = parseCompositeKey(shareKey) ?: return null
-        return "$baseURL/api/v1/t/$assetId/${keys[1]}/tile_500"
+        return "$baseURL${selected.pathPrefix}/t/$assetId/${keys[1]}/tile_500"
     }
 
     override fun previewURL(baseURL: String, asset: Asset, shareKey: String): String? {
         val keys = parseCompositeKey(shareKey) ?: return null
         val hash = asset.providerData?.get("fileHash") ?: asset.id
-        return "$baseURL/api/v1/t/$hash/${keys[1]}/fit_2048"
+        return "$baseURL${selected.pathPrefix}/t/$hash/${keys[1]}/fit_2048"
     }
 
     override fun originalURL(baseURL: String, asset: Asset, shareKey: String): String? {
         val keys = parseCompositeKey(shareKey) ?: return null
         val hash = asset.providerData?.get("fileHash") ?: asset.id
-        return "$baseURL/api/v1/t/$hash/${keys[1]}/fit_4096"
+        return "$baseURL${selected.pathPrefix}/t/$hash/${keys[1]}/fit_4096"
     }
 
     override fun videoPlaybackURL(baseURL: String, asset: Asset, shareKey: String): String? {
         if (asset.type != AssetType.VIDEO) return null
         val keys = parseCompositeKey(shareKey) ?: return null
         val hash = asset.providerData?.get("fileHash") ?: asset.id
-        return "$baseURL/api/v1/videos/$hash/${keys[1]}/avc"
+        return "$baseURL${selected.pathPrefix}/videos/$hash/${keys[1]}/avc"
     }
 
     override suspend fun uploadAsset(
